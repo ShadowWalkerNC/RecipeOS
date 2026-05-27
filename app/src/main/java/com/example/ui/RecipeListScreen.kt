@@ -23,7 +23,7 @@ fun RecipeListScreen(viewModel: RecipeViewModel, navController: NavController) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Recipe Boom") })
+            TopAppBar(title = { Text("RecipeOS") })
         },
         floatingActionButton = {
             FloatingActionButton(

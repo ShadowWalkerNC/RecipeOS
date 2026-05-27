@@ -1,6 +1,6 @@
 {
-  "name": "Recipe Boom",
-  "description": "Recipe scaling, cost calculation, and grocery list generator.",
+  "name": "RecipeOS",
+  "description": "Professional kitchen operating system featuring ratio recipes, prep lists, and precise unit scaling.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
