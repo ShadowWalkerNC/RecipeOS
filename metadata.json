@@ -1,0 +1,6 @@
+{
+  "name": "Recipe Boom",
+  "description": "Recipe scaling, cost calculation, and grocery list generator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
