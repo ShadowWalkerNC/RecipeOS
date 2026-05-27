@@ -86,3 +86,51 @@ interface GroceryDao {
     @Query("SELECT * FROM grocery_items WHERE name = :name")
     suspend fun getGroceryItemByName(name: String): GroceryItem?
 }
+
+@Dao
+interface RatioDao {
+    @Query("SELECT * FROM ratio_blueprints ORDER BY createdAt DESC")
+    fun getAllRatioBlueprints(): Flow<List<RatioBlueprint>>
+
+    @Query("SELECT * FROM ratio_blueprints WHERE id = :id")
+    fun getRatioBlueprintById(id: Int): Flow<RatioBlueprint?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRatioBlueprint(ratioBlueprint: RatioBlueprint): Long
+
+    @Update
+    suspend fun updateRatioBlueprint(ratioBlueprint: RatioBlueprint)
+
+    @Query("DELETE FROM ratio_blueprints WHERE id = :id")
+    suspend fun deleteRatioBlueprint(id: Int)
+}
+
+@Dao
+interface PrepDao {
+    @Query("SELECT * FROM prep_lists ORDER BY date DESC")
+    fun getAllPrepLists(): Flow<List<PrepList>>
+
+    @Query("SELECT * FROM prep_lists WHERE id = :id")
+    fun getPrepListById(id: Int): Flow<PrepList?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrepList(prepList: PrepList): Long
+
+    @Update
+    suspend fun updatePrepList(prepList: PrepList)
+
+    @Query("DELETE FROM prep_lists WHERE id = :id")
+    suspend fun deletePrepList(id: Int)
+
+    @Query("SELECT * FROM prep_tasks WHERE prepListId = :prepListId ORDER BY sortOrder ASC")
+    fun getPrepTasksForList(prepListId: Int): Flow<List<PrepTask>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPrepTask(prepTask: PrepTask)
+
+    @Update
+    suspend fun updatePrepTask(prepTask: PrepTask)
+
+    @Query("DELETE FROM prep_tasks WHERE id = :id")
+    suspend fun deletePrepTask(id: Int)
+}

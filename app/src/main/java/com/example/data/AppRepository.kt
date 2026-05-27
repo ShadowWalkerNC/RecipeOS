@@ -5,16 +5,23 @@ import kotlinx.coroutines.flow.Flow
 class AppRepository(
     private val recipeDao: RecipeDao,
     private val pantryDao: PantryDao,
-    private val groceryDao: GroceryDao
+    private val groceryDao: GroceryDao,
+    private val ratioDao: RatioDao,
+    private val prepDao: PrepDao
 ) {
     val allRecipes: Flow<List<Recipe>> = recipeDao.getAllRecipes()
     val allPantryItems: Flow<List<PantryItem>> = pantryDao.getAllPantryItems()
     val allGroceryItems: Flow<List<GroceryItem>> = groceryDao.getAllGroceryItems()
+    val allRatioBlueprints: Flow<List<RatioBlueprint>> = ratioDao.getAllRatioBlueprints()
+    val allPrepLists: Flow<List<PrepList>> = prepDao.getAllPrepLists()
 
     fun searchRecipes(query: String) = recipeDao.searchRecipes(query)
     fun getRecipeById(id: Int) = recipeDao.getRecipeById(id)
     fun getIngredientsForRecipe(recipeId: Int) = recipeDao.getIngredientsForRecipe(recipeId)
     fun getPantryItemById(id: Int) = pantryDao.getPantryItemByIdFlow(id)
+    fun getRatioBlueprintById(id: Int) = ratioDao.getRatioBlueprintById(id)
+    fun getPrepListById(id: Int) = prepDao.getPrepListById(id)
+    fun getPrepTasksForList(id: Int) = prepDao.getPrepTasksForList(id)
 
     suspend fun insertRecipe(recipe: Recipe): Int {
         return recipeDao.insertRecipe(recipe).toInt()
@@ -35,6 +42,18 @@ class AppRepository(
     suspend fun updateGroceryItem(item: GroceryItem) = groceryDao.updateGroceryItem(item)
     suspend fun deleteGroceryItem(id: Int) = groceryDao.deleteGroceryItem(id)
     suspend fun clearCheckedGroceryItems() = groceryDao.clearCheckedItems()
+
+    suspend fun insertRatioBlueprint(ratioBlueprint: RatioBlueprint) = ratioDao.insertRatioBlueprint(ratioBlueprint)
+    suspend fun updateRatioBlueprint(ratioBlueprint: RatioBlueprint) = ratioDao.updateRatioBlueprint(ratioBlueprint)
+    suspend fun deleteRatioBlueprint(id: Int) = ratioDao.deleteRatioBlueprint(id)
+
+    suspend fun insertPrepList(prepList: PrepList) = prepDao.insertPrepList(prepList)
+    suspend fun updatePrepList(prepList: PrepList) = prepDao.updatePrepList(prepList)
+    suspend fun deletePrepList(id: Int) = prepDao.deletePrepList(id)
+    
+    suspend fun insertPrepTask(prepTask: PrepTask) = prepDao.insertPrepTask(prepTask)
+    suspend fun updatePrepTask(prepTask: PrepTask) = prepDao.updatePrepTask(prepTask)
+    suspend fun deletePrepTask(id: Int) = prepDao.deletePrepTask(id)
 
     suspend fun syncCheckedGroceryToPantryAndClear() {
         val checked = groceryDao.getCheckedGroceryItems()

@@ -1,143 +1,217 @@
-# RecipeOS — Project Plan & Vision Document
+# RecipeOS — Revised Stable Plan
 
-> **The professional kitchen — for everyone.** From the first-time home cook to the seasoned chef, RecipeOS is a kitchen operating system built around the way real kitchens actually think and work.
+Decision: Kotlin + Jetpack Compose, Android-first, single canonical repo.
 
----
-
-## Vision & Philosophy
-
-RecipeOS bridges the gap between home cooking and professional kitchen practice. The core belief is that the tools professionals use — ratio-based recipes, mise en place prep lists, batch scaling, unit precision — should be accessible to anyone, at any skill level, with an interface that meets them where they are.
-
-This app is also the **culinary engine** that will power a larger ecosystem. RecipeOS feeds directly into **CulinaryOS**, a full restaurant operations platform that includes a custom-built POS and KDS (Kitchen Display System). The recipe intelligence, ratio logic, prep workflows, and inventory data built in RecipeOS become the source of truth for everything upstream in that system.
-
----
-
-## The Bigger Picture — RecipeOS → CulinaryOS
+## Architecture — Locked
 
 ```
-RecipeOS (Mobile App)
-  │
-  ├── Recipes (with ratio blueprints & variants)
-  ├── Inventory & Ingredient Data
-  ├── Prep Lists & Mise en Place
-  ├── Unit Conversion Engine
-  └── AI (Gemini) — scan, generate, adapt
-         │
-         ▼
-  CulinaryOS (Restaurant Operations Platform)
-  ├── POS — Point of Sale (custom-built)
-  ├── KDS — Kitchen Display System (custom-built)
-  ├── Menu Management (sourced from RecipeOS recipes)
-  ├── Inventory Control (sourced from RecipeOS inventory)
-  └── Labor / Prep Scheduling (sourced from prep lists)
+RecipeOS/
+├── app/
+│   ├── data/
+│   │   ├── db/          ← Room database + DAOs
+│   │   ├── model/       ← Entity classes
+│   │   └── repository/  ← Repository pattern (single source of truth)
+│   ├── ui/
+│   │   ├── recipes/     ← Recipe list, detail, create/edit screens
+│   │   ├── inventory/   ← Pantry tracker screens
+│   │   ├── prep/        ← Prep list builder screens
+│   │   ├── converter/   ← Unit conversion screen
+│   │   └── components/  ← Shared Composables
+│   ├── ai/              ← Gemini API calls (isolated layer)
+│   └── util/            ← Conversion math, ratio engine, formatting
+├── build.gradle.kts     ← Already configured
+└── .env / secrets       ← GEMINI_API_KEY via Secrets plugin
 ```
 
-RecipeOS is not just a standalone app — it is the **culinary data layer** for CulinaryOS. Every recipe, ratio, ingredient, and prep workflow created here becomes a node in the larger operating system.
+Rule: AI is isolated in `/ai/`. Everything else works offline. Gemini is an enhancement, not a dependency.
 
----
+## The Ratio Blueprint Data Model — Issue #12a (do this first)
 
-## The Ratio Recipe System
+This is the schema everything else depends on. Lock it before writing more UI.
 
-### What Is a Ratio Recipe?
+```kotlin
+// RatioBlueprint — the formula
+@Entity(tableName = "ratio_blueprints")
+data class RatioBlueprint(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,           // "Basic Vinaigrette"
+    val description: String,
+    val category: String,       // "Dressing", "Bread", "Pastry", "Sauce"
+    val ratioJson: String,      // JSON: [{"part":"fat","ratio":3},{"part":"acid","ratio":1}]
+    val notes: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
 
-A ratio recipe is a **base formula expressed as proportional parts rather than fixed quantities**. Professional bakers and cooks have always worked this way — a standard vinaigrette is always 3 parts oil to 1 part acid, regardless of batch size. A basic bread dough is always 5:3 flour to water by weight.
+// Recipe — a specific instance, may be linked to a blueprint
+@Entity(tableName = "recipes")
+data class Recipe(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val description: String,
+    val skillLevel: String,     // BEGINNER, INTERMEDIATE, ADVANCED, PRO
+    val cuisine: String,
+    val servings: Int,
+    val yieldUnit: String,      // "servings", "oz", "loaves", etc.
+    val ratioId: Long? = null,  // FK → RatioBlueprint (nullable = standalone recipe)
+    val isBlueprint: Boolean = false,
+    val instructions: String,   // JSON array of steps
+    val tags: String,           // comma-separated
+    val createdAt: Long = System.currentTimeMillis()
+)
 
-Ratios make recipes:
-- **Infinitely scalable** — scale to any batch size without recalculating each ingredient
-- **Teachable** — a beginner who understands the ratio understands the recipe at a deeper level
-- **Variable** — swap ingredients within a ratio category to create endless legal variations
+// RecipeIngredient — belongs to a Recipe
+@Entity(tableName = "recipe_ingredients",
+    foreignKeys = [ForeignKey(Recipe::class, ["id"], ["recipeId"], onDelete = CASCADE)])
+data class RecipeIngredient(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val recipeId: Long,
+    val name: String,
+    val amount: Double,
+    val unit: String,           // g, oz, cup, tbsp, tsp, ml, l, lb, kg, piece
+    val ratioPart: String? = null, // "fat", "acid" — links to blueprint ratio
+    val notes: String = ""
+)
 
-### How It Works in RecipeOS
+// PantryItem — inventory
+@Entity(tableName = "pantry_items")
+data class PantryItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val quantity: Double,
+    val unit: String,
+    val category: String,
+    val barcode: String? = null,
+    val updatedAt: Long = System.currentTimeMillis()
+)
 
-Every recipe in RecipeOS can be designated as a **Ratio Blueprint** or linked to one as a **Variant**.
+// PrepList + PrepTask
+@Entity(tableName = "prep_lists")
+data class PrepList(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,           // "Baking Prep", "Soup Day"
+    val recipeId: Long? = null, // optional link
+    val date: Long,
+    val isTemplate: Boolean = false
+)
 
+@Entity(tableName = "prep_tasks",
+    foreignKeys = [ForeignKey(PrepList::class, ["id"], ["prepListId"], onDelete = CASCADE)])
+data class PrepTask(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val prepListId: Long,
+    val taskType: String,   // WASH, PEEL, CHOP, DICE, MINCE, JULIENNE, BRUNOISE,
+                            // WEIGH, PORTION, MARINATE, BLANCH, REDUCE, LABEL_STORE
+    val description: String,
+    val ingredient: String,
+    val estimatedMinutes: Int,
+    val isComplete: Boolean = false,
+    val sortOrder: Int = 0
+)
 ```
-Ratio Blueprint: Basic Vinaigrette
-  Ratio: 3 parts fat : 1 part acid : season to taste
 
-  Variants:
-  ├── Classic French Vinaigrette    (olive oil + red wine vinegar + Dijon)
-  ├── Asian Sesame Dressing         (sesame oil + rice vinegar + soy + ginger)
-  ├── Honey Citrus Vinaigrette      (avocado oil + lemon juice + honey)
-  └── Balsamic Reduction Dressing   (olive oil + balsamic + garlic)
-```
+## Revised Roadmap — Stable Phases
 
----
+### Phase 0 — Stabilize (This Week)
 
-## Core Feature Set
+Turn the AI Studio scaffold into a real Android project.
+- Replace README with RecipeOS-specific docs
+- Remove `signingConfig = signingConfigs.getByName("debugConfig")` from app build.gradle.kts
+- Add `local.properties` to `.gitignore`
+- Create `ARCHITECTURE.md`
+- Create Issue #12a: Ratio Blueprint Schema
+- Create Issue #13: Architecture stabilization + README
 
-### 📖 Recipe Management
-- Create, edit, and browse recipes tagged by skill level: `Beginner` → `Intermediate` → `Advanced` → `Pro`
-- Designate any recipe as a **Ratio Blueprint** and create linked **Variants**
-- Search and filter by skill level, cuisine, ingredient, or ratio family
-- Step-by-step instructions with technique callouts
+### Phase 1 — Foundation (Weeks 1–4)
 
-### 🥕 Ingredient & Inventory (Including Barcode Scanning)
-- Full pantry tracker linked to recipes
-- Input ingredients on hand → get AI recipe ideas
-- Auto-detect missing ingredients when a recipe is selected
-- Grocery list generation from recipe needs vs. current stock
-- **[NEW] Barcode Scanner**: Add to pantry instantly using the device camera.
-  - Checks local SQLite `AppDatabase` for existing custom ingredients.
-  - Queries public Internet databases (like Open Food Facts API) to auto-fetch product names, categories, and volumes for unrecognized barcodes.
+Issues #1, #2, #3, #4 + new #12a
 
-### ⚖️ Unit Conversion & Scaling
-- Weight ↔ Volume ↔ Temperature: all professional kitchen units
-- Ratio-based scaling: scale by servings, batch size, yield %, or ratio multiplier
-- Density-aware conversions (ingredient-specific weight-to-volume)
-- Fraction display: ½, ⅓, ¼, ⅔, ¾ — not decimals
+**#12a — Ratio Blueprint schema (do first)**
+- Implement all Room entities above
+- Write DAOs for CRUD on all tables
+- Wire up AppDatabase with migrations versioned from v1
 
-### 📋 Prep Lists (Professional Kitchen Workflow)
-- Build mise en place prep lists task-by-task
-- Task types: wash, peel, chop, dice, mince, julienne, brunoise, weigh, portion, marinate, blanch, reduce, label & store
-- Time-block tasks across a prep window
-- Pre-service checklist mode with progress tracking
-- Save reusable templates: "Baking Prep", "Soup Day", "Protein Butchery"
+**#1 — Recipe CRUD**
+- RecipeListScreen → RecipeDetailScreen → RecipeEditScreen
+- ViewModel + Repository pattern
+- Skill level filter chips on list screen
 
-### 🤖 AI Integration (Gemini)
-- **Scan-a-Recipe**: photograph a recipe card or cookbook page → OCR + AI parse → import
-- **Ingredient → Ideas**: input what you have, get AI-generated recipe suggestions
-- **Skill Adaptation**: take any recipe and simplify it for a beginner or elevate it for a pro
-- **Substitution Engine**: suggest ingredient swaps that preserve the ratio
+**#2 — Ingredient inventory**
+- PantryScreen with add/edit/delete
+- Quantity editing inline
+- Category grouping
 
----
+**#3 — Scaling engine**
+- RecipeScaler.kt utility: takes a Recipe + target servings → returns scaled RecipeIngredient list
+- Ratio-aware: if recipe is linked to a blueprint, scale preserves ratios
+- Fraction formatter: output ½, ⅓, ¾ not 0.5, 0.33
 
-## Roadmap
+**#4 — Unit converter**
+- UnitConverter.kt — weight ↔ volume ↔ temperature
+- Standalone converter screen + embedded in recipe detail
 
-### Phase 1 — Foundation (Now → 4 weeks)
-Issues: [#1][#2][#3][#4]
+### Phase 2 — Pro Kitchen Tools (Weeks 4–8)
 
-- [x] **#1** Recipe CRUD with skill-level tagging
-- [x] **#2** Ingredient inventory with quantity tracking
-- [x] **#3** Recipe scaling engine (servings, batch, yield %)
-- [ ] **#4** Full unit converter — weight, volume, temperature
-- [x] Room database for persistent local storage
-- [ ] Ratio Blueprint data model — define ratio schema and link recipes as variants
+Issues #5, #6, #7, #8, #12
 
-### Phase 2 — Pro Kitchen Tools & Inventory Scanning (4–8 weeks)
-Issues: [#5][#6][#7][#8][#12]
+**#5 — Prep list builder**
+- PrepListScreen → PrepTaskScreen
+- Task type picker
+- Time-block view
+- Pre-service checklist mode
+- Template save/load
 
-- [ ] **#12** Barcode scanner for inventory input 
-      * Implementation: Google ML Kit Vision API + Open Food Facts API + fallback to local DB.
-- [ ] **#5** Prep list builder with task types, time blocks, and pre-service checklist mode
-- [ ] **#6** Scan-a-recipe (camera OCR + Gemini AI parse)
-- [ ] **#7** Ingredient list → AI recipe idea generator
-- [ ] **#8** Density-aware unit conversions (ingredient-specific weight ↔ volume)
-- [ ] Ratio Variant creator — fork any Ratio Blueprint into a new recipe variant
-- [ ] Ratio library — browse community ratio blueprints (standard culinary ratios pre-loaded)
+**#12 — Barcode scanner**
+- ML Kit Vision + Open Food Facts API
+- On scan: check local Room DB first → fall back to API → create PantryItem
+- Handle unknown barcodes gracefully (manual entry fallback)
 
-### Phase 3 — Intelligence & Polish (8–12 weeks)
-Issues: [#9][#10][#11]
+**#6 — Scan-a-Recipe**
+- Camera intent → ML Kit OCR → Gemini parse prompt
+- Output: pre-filled RecipeEditScreen
 
-- [ ] **#9** Missing ingredient detection + auto grocery list
-- [ ] **#10** AI skill-level adaptation (simplify or elevate any recipe)
-- [ ] **#11** Recipe & prep list export (PDF + share sheet)
-- [ ] Cloud sync (Firebase or Supabase)
-- [ ] AI Ratio Suggestion — analyze a user's recipe and suggest the underlying ratio
+**#7 — Ingredient → AI recipe ideas**
+- Input: selected PantryItems
+- Output: Gemini-generated recipe suggestions (ratio awareness)
 
-### Phase 4 — CulinaryOS Integration (Future)
-- [ ] API layer: expose RecipeOS data to CulinaryOS
-- [ ] Menu Management sync: recipes become menu items in POS
-- [ ] Inventory sync: RecipeOS stock data feeds CulinaryOS purchasing
-- [ ] Prep Schedule sync: prep lists feed into labor/shift planning in CulinaryOS
-- [ ] KDS integration: recipe steps and prep tasks display on kitchen screens
+**#8 — Density-aware conversions**
+- Ingredient density table (flour, sugar, butter, water, cream, oil)
+- Lookup table in Room or constants
+- Applied automatically in unit converter
+
+### Phase 3 — Intelligence & Sync (Weeks 8–12)
+
+Issues #9, #10, #11 + cloud
+
+**#9 — Missing ingredient detection + grocery list**
+- Compare RecipeIngredient list vs. PantryItem quantities
+- Generate ShoppingList entity
+- Export as text/share
+
+**#10 — AI skill-level adaptation**
+- Gemini prompt: take recipe JSON + target skill level → return adapted instructions
+- Store as a new Recipe variant linked to same ratio blueprint
+
+**#11 — Export (PDF + share sheet)**
+- Recipe card as formatted PDF
+- Prep list as checklist PDF
+- Share via Android share sheet
+
+**Cloud sync — Supabase**
+- Mirror Room schema in Supabase Postgres
+- Auth: Google Sign-In → Supabase JWT
+- Sync strategy: local-first, push on connect
+
+### Phase 4 — CulinaryOS Integration (2027)
+
+- REST API layer: RecipeOS Supabase DB → CulinaryOS reads via Edge Functions
+- Menu sync: Recipe → MenuItem in CulinaryOS POS
+- Inventory sync: PantryItem → purchasing module
+- Prep schedule sync: PrepList → labor/shift planning
+- KDS: recipe steps stream to kitchen display
+
+### Immediate Next Actions (in order)
+1. Create Issue #12a in GitHub — Ratio Blueprint Schema (paste the Kotlin above as the spec)
+2. Create Issue #13 — Phase 0 stabilization tasks
+3. Implement the 5 Room entities — get the DB layer solid before any more UI
+4. Write one seed recipe — Basic Donut Dough as a RatioBlueprint with a Half Baked variant. This validates the schema against a real use case.
+5. Replace the README — point it at the PROJECT_PLAN and ARCHITECTURE docs

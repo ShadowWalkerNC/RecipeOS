@@ -1,21 +1,8 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# RecipeOS
 
-# Run and deploy your AI Studio app
+**The professional kitchen — for everyone.** 
+From the first-time home cook to the seasoned chef, RecipeOS is a kitchen operating system built around the way real kitchens actually think and work. 
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/234d980d-98f3-417b-acba-ffe59ea3052f
-
-## Run Locally
-
-**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
-
-
-1. Open Android Studio
-2. Select **Open** and choose the directory containing this project
-3. Allow Android Studio to fix any incompatibilities as it imports the project.
-4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
-5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
-6. Run the app on an emulator or physical device
+## Documentation
+* See **[PROJECT_PLAN.md](PROJECT_PLAN.md)** for vision, feature sets, ratio blueprints, and roadmap.
+* See **[ARCHITECTURE.md](ARCHITECTURE.md)** for folder structure and system rules.

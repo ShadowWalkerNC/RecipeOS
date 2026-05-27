@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -26,9 +27,9 @@ fun MainNavigation(navController: NavHostController, factory: MainViewModelFacto
         bottomBar = {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentDestination = navBackStackEntry?.destination
-            val screens = listOf("recipes", "pantry", "grocery")
-            val icons = listOf(Icons.Default.RestaurantMenu, Icons.AutoMirrored.Filled.List, Icons.Default.ShoppingCart)
-            val labels = listOf("Recipes", "Pantry", "Grocery")
+            val screens = listOf("recipes", "pantry", "grocery", "prep")
+            val icons = listOf(Icons.Default.RestaurantMenu, Icons.AutoMirrored.Filled.List, Icons.Default.ShoppingCart, androidx.compose.material.icons.Icons.Default.Checklist)
+            val labels = listOf("Recipes", "Pantry", "Grocery", "Prep")
             
             // only show bottom bar on main screens
             if (currentDestination?.route in screens) {
@@ -80,6 +81,15 @@ fun MainNavigation(navController: NavHostController, factory: MainViewModelFacto
             composable("grocery") {
                 val vm: GroceryViewModel = viewModel(factory = factory)
                 GroceryScreen(vm)
+            }
+            composable("prep") {
+                val vm: PrepViewModel = viewModel(factory = factory)
+                PrepListScreen(vm, navController)
+            }
+            composable("prep_detail/{prepId}") { backStackEntry ->
+                val prepId = backStackEntry.arguments?.getString("prepId")?.toIntOrNull() ?: return@composable
+                val vm: PrepViewModel = viewModel(factory = factory)
+                PrepDetailScreen(prepId, vm, navController)
             }
         }
     }

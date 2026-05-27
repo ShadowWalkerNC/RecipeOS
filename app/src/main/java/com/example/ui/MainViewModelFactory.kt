@@ -18,6 +18,10 @@ class MainViewModelFactory(private val repository: AppRepository) : ViewModelPro
             @Suppress("UNCHECKED_CAST")
             return GroceryViewModel(repository) as T
         }
+        if (modelClass.isAssignableFrom(PrepViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return PrepViewModel(repository) as T
+        }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

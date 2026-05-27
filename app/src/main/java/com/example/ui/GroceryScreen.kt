@@ -89,21 +89,73 @@ fun GroceryScreen(viewModel: GroceryViewModel) {
 }
 
 @Composable
-fun GroceryItemRow(item: GroceryItem, onToggle: (Boolean) -> Unit, onDelete: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable { onToggle(!item.isChecked) }.padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+fun GroceryItemRow(item: GroceryItem, onToggle: (Boolean) -> Unit, onUpdateAmount: ((Double) -> Unit)? = null, onDelete: () -> Unit) {
+    val (buyableAmount, buyableUnit) = computeBuyableSize(item.name, item.amount, item.unit)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onToggle(!item.isChecked) },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
     ) {
-        Checkbox(checked = item.isChecked, onCheckedChange = onToggle)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "${item.amount} ${item.unit} ${item.name}",
-            style = MaterialTheme.typography.bodyLarge,
-            textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
-            modifier = Modifier.weight(1f)
-        )
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete")
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = item.isChecked, onCheckedChange = onToggle)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
+                )
+                Text(
+                    text = "${String.format("%.1f", buyableAmount)} $buyableUnit",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            }
         }
     }
+}
+
+fun computeBuyableSize(name: String, amount: Double, unit: String): Pair<Double, String> {
+    val u = unit.lowercase()
+    val n = name.lowercase()
+    // For liquid ingredients like milk, cream, etc., convert cups/pints/quarts to gallons or half-gallons
+    if (u in listOf("cup", "cups", "pint", "pints", "quart", "quarts", "fl oz", "fluid ounce", "ml", "milliliter", "milliliters")) {
+        // Convert everything to ml first
+        val ml = when (u) {
+            "cup", "cups" -> amount * 236.588
+            "pint", "pints" -> amount * 473.176
+            "quart", "quarts" -> amount * 946.353
+            "fl oz", "fluid ounce" -> amount * 29.5735
+            else -> amount
+        }
+        val gallons = ml / 3785.41
+        if (gallons > 0.3) {
+            return Pair(Math.ceil(gallons), "gallon(s)") // round up to whole gallons
+        } else if (ml > 100) {
+            return Pair(Math.ceil(ml / 1000.0), "liter(s)")
+        }
+    }
+    // For solid ingredients in g/oz/lb -> convert to buyable package sizes (e.g. 1 lb, 500g, 1kg)
+    if (u in listOf("g", "gram", "grams", "oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds", "kg", "kilogram", "kilograms")) {
+        val g = when(u) {
+            "oz", "ounce", "ounces" -> amount * 28.3495
+            "lb", "lbs", "pound", "pounds" -> amount * 453.592
+            "kg", "kilogram", "kilograms" -> amount * 1000.0
+            else -> amount
+        }
+        if (g > 500) {
+            return Pair(Math.ceil(g / 1000.0), "kg")
+        } else if (g > 0) {
+            // less than 500g, maybe round to hundreds of grams, or just lb
+            return Pair(Math.ceil(g / 250.0) * 250, "g")
+        }
+    }
+    return Pair(Math.ceil(amount), unit)
 }
