@@ -1,17 +1,12 @@
 # RecipeOS
 
-[![Stack](https://img.shields.io/badge/stack-TypeScript%20%7C%20React%20Native-blue)]()
-[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android%20%7C%20CLI%20%7C%20MCP-purple)]()
-[![License](https://img.shields.io/badge/license-MIT-green)]()
+[![Phase](https://img.shields.io/badge/phase-1%20Core%20Data-blue)](PROJECT_PLAN.md)
+[![Stack](https://img.shields.io/badge/stack-TypeScript%20%7C%20React%20Native%20%7C%20Supabase-purple)](ARCHITECTURE.md)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**RecipeOS** is a ratio-first, offline-capable recipe and kitchen management system built on a unified TypeScript stack.
+**RecipeOS** is a TypeScript-first culinary toolkit for professional chefs, home cooks, and food entrepreneurs. It runs as a standalone mobile app (iOS + Android) and as an MCP server extension to [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS).
 
-It runs as three surfaces from one codebase:
-- **Mobile app** — React Native + Expo (iOS + Android)
-- **CLI** — `recipe-cli` for terminal-based kitchen workflows
-- **MCP Server** — `recipeos-server` plugs RecipeOS into [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS) as a first-class tool server
-
-This is not a recipe book. Every recipe is a ratio blueprint that scales intelligently, adapts by skill level, and syncs with restaurant operations.
+Every recipe is built on a **Ratio Blueprint** — a proportional formula that scales intelligently. Specific instances are called **Variants**. Scale for 2 or 200, the ratios hold.
 
 ---
 
@@ -23,20 +18,17 @@ git clone https://github.com/ShadowWalkerNC/RecipeOS.git
 cd RecipeOS
 
 # 2. Install dependencies
-npm install
+cd mobile && npm install
 
 # 3. Configure environment
 cp .env.example .env
-# Set SUPABASE_URL, SUPABASE_ANON_KEY, GEMINI_API_KEY
+# Set SUPABASE_URL and SUPABASE_ANON_KEY
 
-# 4. Start mobile app
-cd mobile && npx expo start
-
-# 5. Start MCP server
-cd mcp && npm run dev
+# 4. Start the app
+npx expo start
 ```
 
-> **Prerequisites:** Node 20+, Expo CLI, EAS CLI (for builds)
+> **Prerequisites:** Node.js 20+, Expo CLI, iOS Simulator or Android Emulator
 
 ---
 
@@ -44,56 +36,58 @@ cd mcp && npm run dev
 
 | Phase | Name | Status | Target |
 |---|---|---|---|
-| 0 | Migration & Scaffold | ✅ Complete | Done |
+| 0 | Migration & Scaffold | ✅ Complete | Jun 2026 |
 | 1 | Core Data + Screens | 🔄 In Progress | Aug 2026 |
 | 2 | Pro Kitchen Tools | ⏳ Pending | Oct 2026 |
 | 3 | Intelligence & Sync | ⏳ Pending | Dec 2026 |
 | 4 | CulinaryOS Integration | ⏳ Pending | 2027 |
 
----
-
-## 🏗️ Architecture
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| Mobile App | React Native + Expo SDK 52 | iOS + Android, offline-first |
-| State Management | Zustand + TanStack Query | Local state + server sync |
-| Local Database | Expo SQLite | Offline-first data persistence |
-| Cloud Sync | Supabase (Postgres + Auth) | Cross-device sync, Google Sign-In |
-| CLI | Commander.js (`recipe-cli`) | Terminal kitchen workflows |
-| MCP Server | TypeScript (`recipeos-server`) | CulinaryOS integration, 10 tools |
-| AI Layer | Gemini API | Scan-a-recipe, skill adaptation, suggestions |
-
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for full stack decisions and module map.
+See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for full phase checklists.
 
 ---
 
-## 🧩 Core Features
+## 🏗️ What It Does
 
-| Domain | What It Does |
+| Module | What It Does |
 |---|---|
-| **Recipe Vault** | Create, browse, and manage recipes with ratio blueprint linking |
-| **Scaling Engine** | Ratio-aware scaling — preserves proportions, outputs clean fractions |
-| **Pantry Tracker** | Inventory management with barcode scan + Open Food Facts lookup |
-| **Prep List Builder** | Pre-service checklist generator with time-block view |
-| **Scan-a-Recipe** | Camera → OCR → Gemini parse → pre-filled recipe form |
-| **AI Suggestions** | Select pantry items → Gemini generates ratio-aware recipe ideas |
-| **Unit Converter** | Weight ↔ volume ↔ temperature with density-aware ingredient lookup |
+| **Recipe Vault** | Create, browse, and manage recipes built on ratio blueprints |
+| **Scale** | Intelligent ratio-aware scaling for any yield or serving count |
+| **Pantry** | Track inventory, get low-stock alerts, detect missing ingredients |
+| **Prep List** | Generate time-blocked prep task lists from any recipe |
+| **Scan** | Camera scan → OCR → Gemini parse → pre-filled recipe form |
+| **CLI** | Headless recipe and pantry management via `recipe-cli` |
+| **MCP Server** | 10 tools exposing RecipeOS data to CulinaryOS and AI agents |
+
+---
+
+## 🧩 Architecture
+
+| Layer | Technology | Why |
+|---|---|---|
+| Mobile app | **React Native + Expo** | iOS + Android from one TypeScript codebase |
+| Navigation | **Expo Router** | File-based routing, native feel |
+| Server state | **TanStack Query** | Caching, background sync, optimistic updates |
+| Client state | **Zustand** | Lightweight, no boilerplate |
+| Offline queue | **Expo SQLite** | Survives crashes; syncs on reconnect |
+| Backend | **Supabase** | PostgreSQL, Auth, Realtime, Edge Functions |
+| CLI | **Commander.js** | Headless recipe + pantry management |
+| MCP Server | **TypeScript / Node.js** | CulinaryOS extension + AI agent tools |
+| AI features | **Gemini API** | Scan-a-recipe, ingredient suggestions, skill adaptation |
+
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for full stack decisions, data model, and CulinaryOS integration spec.
 
 ---
 
 ## 🔗 CulinaryOS Integration
 
-RecipeOS connects to [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS) as an MCP tool server.
-The `recipeos-server` exposes 10 MCP tools that CulinaryOS can call:
+RecipeOS registers as an MCP extension to [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS). The MCP server exposes 10 tools that allow the CulinaryOS AI agent to:
 
-- Recipe lookup and scaling
-- Pantry availability checks
-- Prep list generation
-- Menu item sync (Recipe → CulinaryOS MenuItem)
-- Ingredient → purchasing module bridge
+- Sync recipes as menu items
+- Bridge pantry inventory to the purchasing module
+- Push prep lists to labor/shift planning
+- Stream recipe steps to KDS displays
 
-See [`mcp/`](mcp/) for server implementation.
+Integration is planned for Phase 4 (2027). See [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
 ---
 
@@ -101,17 +95,17 @@ See [`mcp/`](mcp/) for server implementation.
 
 | Doc | Purpose |
 |---|---|
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Stack decisions, module map, platform rules |
-| [`MIGRATION.md`](MIGRATION.md) | Kotlin → TypeScript migration status and checklist |
-| [`PROJECT_PLAN.md`](PROJECT_PLAN.md) | Full phase roadmap with feature specs |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | Stack decisions, data model, offline sync, CulinaryOS integration |
+| [`PROJECT_PLAN.md`](PROJECT_PLAN.md) | Phase-by-phase build plan with checklists |
+| [`MIGRATION.md`](MIGRATION.md) | Kotlin → TypeScript migration log and checklist |
 
 ---
 
 ## 🤖 AI Agent Directive
 
 > **Current phase:** Phase 1 — Core Data + Screens
-> **Current action:** Build Supabase schema + wire live data via TanStack Query
-> **Stack:** React Native + Expo · TypeScript · Zustand · TanStack Query · Expo SQLite · Supabase · Gemini API · Commander.js · MCP
-> **Do NOT:** use Kotlin/Room/Gradle for new features · mix Supabase and Room · add web browser targets (mobile + CLI + MCP only)
-> **Always:** keep AI isolated in `mobile/lib/ai/` · write offline-first (SQLite first, sync second) · match CulinaryOS event patterns for sync
+> **Current action:** Build Supabase schema + wire live data to mobile screens
+> **Stack:** TypeScript · React Native + Expo · Supabase · TanStack Query · Zustand · Commander.js · MCP
+> **Do NOT:** use Kotlin · use Room · skip RLS on any table · make unscoped Supabase queries
+> **Always:** write `user_id` RLS on every new table · keep AI calls isolated in `mobile/lib/ai.ts` · offline-first for all mobile writes
 > **GitHub:** https://github.com/ShadowWalkerNC/RecipeOS
