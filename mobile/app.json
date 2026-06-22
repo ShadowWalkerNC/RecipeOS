@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "RecipeOS",
+    "slug": "recipeos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.shadowwalker.recipeos"
+    },
+    "ios": {
+      "bundleIdentifier": "com.shadowwalker.recipeos",
+      "supportsTablet": true
+    },
+    "plugins": ["expo-router", "expo-sqlite", "expo-camera", "expo-image-picker"],
+    "scheme": "recipeos",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

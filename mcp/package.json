@@ -1,0 +1,20 @@
+{
+  "name": "recipeos-mcp-server",
+  "version": "1.0.0",
+  "description": "RecipeOS MCP server — exposes recipes, scaling, pantry, prep lists, and shopping lists as AI agent tools",
+  "main": "dist/recipeos-server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/recipeos-server.js",
+    "dev": "ts-node recipeos-server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.12.0"
+  }
+}
