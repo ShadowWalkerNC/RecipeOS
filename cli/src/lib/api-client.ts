@@ -1,22 +1,34 @@
 import 'dotenv/config';
+import { loadConfig } from './config.js';
 
-const BASE_URL = process.env.RECIPEOS_API_URL ?? 'http://localhost:3000';
-const API_KEY  = process.env.RECIPEOS_API_KEY ?? '';
+export function getBaseUrl(): string {
+  return process.env.RECIPEOS_API_URL ?? loadConfig().apiUrl ?? 'http://localhost:3000';
+}
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+export function getApiKey(): string {
+  return process.env.RECIPEOS_API_KEY ?? loadConfig().apiKey ?? '';
+}
+
+function headers(): Record<string, string> {
+  return { Authorization: `Bearer ${getApiKey()}`, 'Content-Type': 'application/json' };
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    method,
+    headers: headers(),
+    body: body != null ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+  if (!res.ok) {
+    let msg = `${method} ${path} failed: ${res.status}`;
+    try { const e = await res.json(); msg += ` — ${e.error ?? JSON.stringify(e)}`; } catch {}
+    throw new Error(msg);
+  }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
-  return res.json() as Promise<T>;
-}
+export const apiGet    = <T>(path: string)               => request<T>('GET',    path);
+export const apiPost   = <T>(path: string, body: unknown) => request<T>('POST',   path, body);
+export const apiPatch  = <T>(path: string, body: unknown) => request<T>('PATCH',  path, body);
+export const apiDelete = <T>(path: string)               => request<T>('DELETE', path);
