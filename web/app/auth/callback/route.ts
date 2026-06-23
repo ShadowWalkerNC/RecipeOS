@@ -1,9 +1,19 @@
-// TODO Phase 1.3 — Supabase auth callback handler
+import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const next = url.searchParams.get('next') ?? '/vault';
-  // Supabase session exchange wired in Phase 1.3
-  return NextResponse.redirect(new URL(next, request.url));
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  const next = searchParams.get('next') ?? '/vault';
+
+  if (code) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      return NextResponse.redirect(`${origin}${next}`);
+    }
+  }
+
+  // Auth failed — redirect to login with error
+  return NextResponse.redirect(`${origin}/auth/login?error=auth_failed`);
 }

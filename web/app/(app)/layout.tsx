@@ -1,4 +1,13 @@
-// TODO Phase 1.3 — wire Supabase auth gate (redirect to /auth/login if no session)
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+import { createClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
+
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth/login');
+  }
+
   return <>{children}</>;
 }
