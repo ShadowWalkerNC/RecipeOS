@@ -1,9 +1,7 @@
 import type { NextConfig } from 'next';
-import path from 'path';
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  outputFileTracingRoot: path.join(__dirname, '../'),
+  // Using next start for deployment (no standalone needed for Render)
 };
 
 export default nextConfig;
