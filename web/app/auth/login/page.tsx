@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -39,8 +41,7 @@ export default function LoginPage() {
         <div className="w-full max-w-sm text-center">
           <h1 className="text-2xl font-bold">Check your email</h1>
           <p className="mt-3 text-gray-500">
-            We sent a magic link to <strong>{email}</strong>.
-            Click it to sign in.
+            We sent a magic link to <strong>{email}</strong>. Click it to sign in.
           </p>
           <button
             onClick={() => { setSubmitted(false); setEmail(''); }}
@@ -60,7 +61,6 @@ export default function LoginPage() {
         <p className="mt-2 text-center text-gray-500 text-sm">
           Enter your email and we&apos;ll send you a magic link.
         </p>
-
         <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
           <input
             type="email"
@@ -70,11 +70,7 @@ export default function LoginPage() {
             required
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           />
-
-          {error && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-
+          {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="submit"
             disabled={loading || !email}

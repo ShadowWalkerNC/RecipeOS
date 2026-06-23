@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
@@ -14,6 +16,5 @@ export async function GET(request: Request) {
     }
   }
 
-  // Auth failed — redirect to login with error
   return NextResponse.redirect(`${origin}/auth/login?error=auth_failed`);
 }
