@@ -1,110 +1,126 @@
 # RecipeOS — Architecture
 
-> v3.0 — Updated June 22, 2026
+> v4.0 — Updated June 23, 2026
 
 ---
 
 ## Governing Constraint
 
-RecipeOS is a **TypeScript-first, offline-capable culinary toolkit** that operates as both a standalone app and an MCP server extension to CulinaryOS. Every architectural decision must serve two masters: the solo chef using the mobile app, and the professional kitchen integrating with CulinaryOS.
+RecipeOS is a **TypeScript-first, open-source culinary toolkit** that operates as a web application, MCP server extension, CLI tool, and eventually a standalone mobile app. It is **self-hostable for free** — anyone can fork, clone, and run it on their own infrastructure. The managed hosted version is the commercial SaaS offering.
 
-**The hardest requirement:** Core recipe and prep functionality must work with zero internet connectivity.
+Every architectural decision must serve three users:
+1. **The home cook / food entrepreneur** using the web app in a browser
+2. **The power user / developer** running the CLI or self-hosting
+3. **The AI agent / CulinaryOS** calling RecipeOS tools via MCP
+
+**The primary constraint:** The web app is the first and primary surface. Mobile is Phase 4.
+
+---
+
+## Surface Priority Order
+
+```
+Phase 1 → Web App       (Next.js — website + user portal)
+Phase 2 → MCP Server    (live Supabase, CulinaryOS-ready)
+Phase 3 → CLI           (recipe-cli, power users, self-hosters)
+Phase 4 → Mobile App    (Expo, iOS + Android, offline-first) ← FROZEN
+Phase 5 → CulinaryOS    (JWT bridge, KDS sync, full integration)
+```
 
 ---
 
 ## Platform Surface Map
 
-| Client | Platform | Users | Connectivity |
-|---|---|---|
----|
-| Mobile App | React Native + Expo (iOS + Android) | Chefs, home cooks, food entrepreneurs | Offline-first |
-| CLI | Node.js / Commander.js | Power users, automation, scripting | Online preferred |
-| MCP Server | TypeScript / Node.js | CulinaryOS AI agent, LLM tool calls | Online required |
+| Client | Platform | Users | Connectivity | Status |
+|---|---|---|---|---|
+| Web App | Next.js 15 (App Router) | Chefs, home cooks, food entrepreneurs | Online (PWA future) | **Phase 1 — Active** |
+| MCP Server | TypeScript / Node.js | CulinaryOS AI agent, LLM tool calls | Online required | Phase 2 |
+| CLI | Node.js / Commander.js | Power users, automation, self-hosters | Online preferred | Phase 3 |
+| Mobile App | React Native + Expo (iOS + Android) | On-the-go chefs | Offline-first | Phase 4 — Frozen |
 
-All three surfaces share the same TypeScript codebase and Supabase backend.
-
-This split is intentional:
-- **Mobile** needs offline capability, camera access (scan-a-recipe), and native UX.
-- **CLI** enables scripting, CI pipelines, and headless automation.
-- **MCP Server** exposes RecipeOS data and tools to CulinaryOS and AI agents as callable functions.
+All surfaces share the same Supabase backend and `shared/` TypeScript types.
 
 ---
 
 ## Stack Decisions
 
-### Mobile — React Native + Expo
+### Web — Next.js 15
 
-- **React Native + Expo SDK 52** — iOS + Android from a single TypeScript codebase
-- **Expo Router** — file-based navigation
-- **Zustand** — lightweight client state (auth, UI state)
-- **TanStack Query** — server state, caching, background sync
-- **Expo SQLite** — local offline queue; survives crashes and reboots
-- **Expo Camera + OCR** — scan-a-recipe feature (Phase 2)
-- **EAS Build** — Google Play + App Store CI/CD
+- **Next.js 15 App Router** — file-based routing, Server Components, API routes
+- **Supabase SSR helpers** — server-side auth session management
+- **TanStack Query** — client-side server state, caching, optimistic updates
+- **Zustand** — lightweight UI state (modals, toasts, active filters)
+- **Magic Link auth** — Supabase email magic link; no passwords to manage
+- **Vercel** — zero-config deployment, preview deploys on every push to `main`
+- **Tailwind CSS** — utility-first styling
+
+### MCP Server — TypeScript
+
+- **`mcp/recipeos-server.ts`** — orchestrator; tools split into `mcp/tools/`
+- Authenticated via **service role key** (Phase 2) → **CulinaryOS JWT** (Phase 5)
+- Tool discovery schema written for CulinaryOS extension registry
+- Publicly hostable — self-hosters can run their own MCP server instance
+- Tools cover: recipe CRUD, pantry queries, prep list generation, ratio scaling, ingredient suggestions
 
 ### CLI — Commander.js
 
 - `recipe-cli` built on **Commander.js**
 - Five command groups: `recipe`, `pantry`, `prep`, `scale`, `sync`
 - Talks directly to Supabase via service role key
-- Designed for power users and automation pipelines
+- Designed for power users, automation pipelines, and self-hosting scripts
 
-### MCP Server — TypeScript
+### Mobile — React Native + Expo ← FROZEN UNTIL PHASE 4
 
-- **`mcp/recipeos-server.ts`** — 10 MCP tools exposed to CulinaryOS and AI agents
-- Authenticated via **CulinaryOS JWT** (Phase 4) or service role key (Phase 1–3)
-- Tool discovery schema written for CulinaryOS's extension registry
-- Tools cover: recipe CRUD, pantry queries, prep list generation, ratio scaling, ingredient suggestions
+- **React Native + Expo SDK 52** — iOS + Android from a single TypeScript codebase
+- **Expo Router** — file-based navigation
+- **Expo SQLite** — local offline queue; survives crashes and reboots
+- **EAS Build** — Google Play + App Store CI/CD
+- All `mobile/` code is frozen. No changes until Phase 4 begins.
 
 ### Backend — Supabase
 
 - **PostgreSQL** via Supabase — ACID, UUID PKs, Row Level Security on all tables
-- **Supabase Auth** — Google Sign-In → JWT; `user_id` scoping enforced on every table
-- **Supabase Realtime** — cross-device sync (Phase 3)
-- **Supabase Edge Functions** — CulinaryOS joint auth bridge (Phase 4)
-- **Supabase JS SDK** — used by mobile, CLI, and MCP server
+- **Supabase Auth** — Magic Link email auth → JWT; `user_id` scoping enforced on every table
+- **Supabase Realtime** — cross-device sync (Phase 4+)
+- **Supabase Edge Functions** — CulinaryOS joint auth bridge (Phase 5)
+- **Supabase JS SDK** — used by web, CLI, and MCP server
 
 ---
 
-## Local-First Architecture
+## Open-Source Model
 
-### The Rule
+RecipeOS is **fully open-source (MIT)**. The business model is:
+
+| Tier | Who | Cost |
+|---|---|---|
+| Self-hosted | Developers, power users | Free — fork + host yourself |
+| Managed (SaaS) | Everyone else | Paid — hosted at recipeos.app |
+
+Self-hosters get 100% feature parity. Documentation for self-hosting lives in `docs/self-hosting.md`.
+
+---
+
+## Authentication Flow
 
 ```
-Write to Expo SQLite first → apply to UI immediately → sync to Supabase in background
+User visits /auth/login
+  ↓
+Enters email → Supabase sends magic link
+  ↓
+User clicks link → /auth/callback
+  ↓
+Supabase session created → redirect to /vault
+  ↓
+All queries scoped to auth.uid() via RLS
 ```
 
-No user action in the mobile app waits for a network round-trip.
-
-### Offline Event Flow
-
-```
-User action (e.g. add recipe)
-  ↓
-Local Expo SQLite write
-  ↓
-UI updated optimistically
-  ↓
-Sync engine (background task) picks it up
-  ↓
-Supabase upsert → conflict resolved by updated_at (last-write-wins)
-  ↓
-Local record marked synced
-```
-
-### Connectivity States
-
-| State | Mobile Behavior |
-|---|---|
-| Online | Changes sync in real time via Supabase Realtime |
-| Offline | Changes queue locally; UI works normally |
-| Reconnecting | Queue drains automatically; catch-up from Supabase |
+Demo access: A shared demo account seeded with sample recipes. A magic link button on the landing page logs directly into the demo user — no sign-up required to explore.
 
 ---
 
 ## Data Model
 
-The schema everything else depends on:
+The schema everything else depends on. Single source of truth lives in `shared/types.ts`.
 
 ```typescript
 // ratio_blueprints — the core abstraction
@@ -184,41 +200,53 @@ interface PrepTask {
 
 ```
 RecipeOS/
-├── mobile/                        ← React Native + Expo app (iOS + Android)
-│   ├── app/                         ← Expo Router screens
-│   │   ├── (tabs)/
-│   │   │   ├── vault.tsx              ← Recipe Vault screen
-│   │   │   ├── scale.tsx              ← Ratio scaling screen
-│   │   │   ├── pantry.tsx             ← Pantry tracker screen
-│   │   │   ├── prep.tsx               ← Prep list builder screen
-│   │   │   └── scan.tsx               ← Scan-a-recipe screen
-│   │   └── _layout.tsx
+├── web/                           ← Next.js 15 web app (PRIMARY surface)
+│   ├── app/
+│   │   ├── (marketing)/             ← Public pages, no auth required
+│   │   │   ├── page.tsx               ← Hero / landing page
+│   │   │   └── layout.tsx
+│   │   ├── (app)/                   ← Auth-gated user portal
+│   │   │   ├── vault/page.tsx         ← Recipe Vault
+│   │   │   ├── scale/page.tsx         ← Ratio scaling
+│   │   │   ├── pantry/page.tsx        ← Pantry tracker
+│   │   │   ├── prep/page.tsx          ← Prep list builder
+│   │   │   └── layout.tsx             ← Auth gate wrapper
+│   │   ├── auth/
+│   │   │   ├── login/page.tsx         ← Magic link login form
+│   │   │   └── callback/route.ts      ← Supabase auth callback
+│   │   └── layout.tsx
+│   ├── components/
+│   │   ├── ui/                      ← Shared UI primitives
+│   │   └── features/                ← Feature-specific components
 │   ├── lib/
-│   │   ├── ratio-engine.ts            ← Ratio blueprint scaling logic
-│   │   ├── supabase.ts                ← Supabase client
-│   │   ├── offline-queue.ts           ← Expo SQLite sync engine
-│   │   └── ai.ts                      ← Gemini API calls (isolated)
-│   ├── store/                         ← Zustand state stores
-│   └── components/                    ← Shared UI components
-├── cli/                           ← recipe-cli (Commander.js)
-│   ├── commands/
-│   │   ├── recipe.ts
-│   │   ├── pantry.ts
-│   │   ├── prep.ts
-│   │   ├── scale.ts
-│   │   └── sync.ts
-│   └── index.ts
-├── mcp/                           ← MCP server (CulinaryOS integration)
-│   ├── recipeos-server.ts           ← 10 MCP tools
+│   │   ├── supabase/
+│   │   │   ├── client.ts              ← Browser Supabase client
+│   │   │   └── server.ts              ← Server-side Supabase client
+│   │   └── queries/                 ← TanStack Query hooks
+│   └── package.json
+├── shared/                        ← Shared TypeScript (all surfaces import from here)
+│   ├── types.ts                     ← Single source of truth for all interfaces
+│   └── ratio-engine.ts              ← Ratio blueprint scaling logic
+├── mobile/                        ← FROZEN — Phase 4 (React Native + Expo)
+├── cli/                           ← Phase 3 (Commander.js)
+├── mcp/                           ← Phase 2 (MCP server)
+│   ├── recipeos-server.ts           ← Thin orchestrator
 │   ├── tools/
 │   │   ├── recipe-tools.ts
 │   │   ├── pantry-tools.ts
 │   │   ├── prep-tools.ts
 │   │   └── scale-tools.ts
-│   └── auth.ts                      ← CulinaryOS JWT bridge
+│   └── auth.ts                      ← CulinaryOS JWT bridge (Phase 5)
 ├── supabase/
 │   ├── migrations/                  ← Numbered SQL migrations
-│   └── seed.sql                     ← Dev seed data
+│   └── seed.sql                     ← Dev seed + demo user data
+├── docs/                          ← Public documentation
+│   ├── self-hosting.md              ← Self-hosting guide (Docker, Railway, Render)
+│   ├── api-reference.md             ← REST API reference
+│   └── mcp-tools.md                 ← MCP tool schemas + descriptions
+├── .github/
+│   └── workflows/
+│       └── deploy.yml               ← Vercel CI/CD on push to main
 ├── ARCHITECTURE.md                ← you are here
 ├── MIGRATION.md                   ← Kotlin → TypeScript migration log
 ├── PROJECT_PLAN.md                ← Phase-by-phase build plan
@@ -227,9 +255,9 @@ RecipeOS/
 
 ---
 
-## CulinaryOS Integration
+## CulinaryOS Integration (Phase 5)
 
-RecipeOS connects to CulinaryOS as a registered MCP extension. The integration surface (Phase 4):
+RecipeOS connects to CulinaryOS as a registered MCP extension:
 
 | RecipeOS | → | CulinaryOS |
 |---|---|---|
@@ -243,9 +271,11 @@ RecipeOS connects to CulinaryOS as a registered MCP extension. The integration s
 
 ## System Rules
 
-1. **Offline-First:** Mobile app writes to Expo SQLite first; Supabase sync is always background.
-2. **AI Isolation:** Gemini API calls live exclusively in `mobile/lib/ai.ts`. They enhance but are never required for core functionality.
-3. **Single Source of Truth:** TanStack Query manages all server state. UI observes query results only.
-4. **Ratio-First:** The application prioritizes RatioBlueprints. Recipes are variants that inherit proportional logic for intelligent scaling.
-5. **user_id Scoping:** Every Supabase table has Row Level Security. Every query is scoped by `user_id`. An unscoped query is a critical bug.
-6. **TypeScript Everywhere:** Mobile, CLI, and MCP server all share TypeScript. No language boundary between surfaces.
+1. **Web-First:** The Next.js web app is the primary surface. All features land here before CLI or mobile.
+2. **Shared Types:** All TypeScript interfaces live in `shared/types.ts`. No surface defines its own duplicate types.
+3. **Ratio-First:** RatioBlueprints are the core abstraction. Recipes inherit proportional logic for intelligent scaling.
+4. **user_id Scoping:** Every Supabase table has Row Level Security. Every query is scoped by `user_id`. An unscoped query is a critical bug.
+5. **AI Isolation:** Gemini/AI API calls are isolated to dedicated files. They enhance but are never required for core functionality.
+6. **TypeScript Everywhere:** Web, CLI, MCP server, and mobile all share TypeScript. No language boundary between surfaces.
+7. **Open-Source Safe:** No secrets in the repository. `.env.example` is always updated alongside any new environment variable.
+8. **Mobile Frozen:** No changes to `mobile/` until Phase 4 is formally started.
