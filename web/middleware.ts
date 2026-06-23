@@ -1,8 +1,8 @@
-import { type NextRequest, NextResponse } from 'next/server';
+import { type NextRequest } from 'next/server';
+import { updateSession } from './lib/supabase/middleware';
 
-// Placeholder middleware — Supabase session refresh wired in Phase 1.2
 export async function middleware(request: NextRequest) {
-  return NextResponse.next({ request });
+  return updateSession(request);
 }
 
 export const config = {
