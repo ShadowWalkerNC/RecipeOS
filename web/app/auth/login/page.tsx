@@ -1,7 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -11,12 +9,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Client created inside handler — not at module scope
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
