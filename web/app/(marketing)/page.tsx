@@ -66,6 +66,12 @@ export default function LandingPage() {
           >
             Get started free
           </Link>
+          <Link
+            href="/api/demo"
+            className="rounded-lg border border-gray-200 text-sm font-medium px-6 py-3 hover:border-gray-400 transition-colors"
+          >
+            Try the demo
+          </Link>
           <a
             href="https://github.com/ShadowWalkerNC/RecipeOS"
             target="_blank"
