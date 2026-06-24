@@ -1,10 +1,6 @@
-// ============================================================
-// RecipeOS — TanStack Query hooks for Supabase data
-// ============================================================
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
-import type { Recipe, PantryItem, PrepTask, Category } from './types';
+import type { Recipe, PantryItem, PrepTask, PrepList, Category } from './types';
 
 // ---- CATEGORIES ----
 
@@ -12,14 +8,11 @@ export function useCategories() {
   return useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('sort_order');
+      const { data, error } = await supabase.from('categories').select('*').order('sort_order');
       if (error) throw error;
       return data as Category[];
     },
-    staleTime: Infinity, // categories never change
+    staleTime: Infinity,
   });
 }
 
@@ -29,10 +22,7 @@ export function useRecipes(search?: string, categoryId?: string) {
   return useQuery({
     queryKey: ['recipes', search, categoryId],
     queryFn: async () => {
-      let q = supabase
-        .from('recipes')
-        .select('*, category:categories(id, name, icon)')
-        .order('name');
+      let q = supabase.from('recipes').select('*, category:categories(id, name, icon)').order('name');
       if (search) q = q.ilike('name', `%${search}%`);
       if (categoryId) q = q.eq('category_id', categoryId);
       const { data, error } = await q;
@@ -70,9 +60,26 @@ export function useAddRecipe() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (recipe: Partial<Recipe>) => {
-      const { data, error } = await supabase.from('recipes').insert(recipe).select().single();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const { data, error } = await supabase
+        .from('recipes')
+        .insert({ ...recipe, user_id: user.id })
+        .select()
+        .single();
       if (error) throw error;
       return data as Recipe;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
+  });
+}
+
+export function useDeleteRecipe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['recipes'] }),
   });
@@ -84,12 +91,14 @@ export function usePantry(lowStockOnly = false) {
   return useQuery({
     queryKey: ['pantry', lowStockOnly],
     queryFn: async () => {
-      let q = supabase.from('pantry').select('*').order('name_override');
-      const { data, error } = await q;
+      const { data, error } = await supabase
+        .from('pantry_items')
+        .select('*')
+        .order('name_override');
       if (error) throw error;
       const items = (data as any[]).map((item) => ({
         ...item,
-        displayName: item.name_override ?? item.ingredient?.name ?? 'Unknown',
+        displayName: item.name_override ?? 'Unknown',
         isLow: item.reorder_at != null && item.quantity <= item.reorder_at,
       })) as PantryItem[];
       return lowStockOnly ? items.filter((i) => i.isLow) : items;
@@ -97,31 +106,56 @@ export function usePantry(lowStockOnly = false) {
   });
 }
 
-export function useUpdatePantry() {
+export function useAddPantryItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, quantity }: { id: string; quantity: number }) => {
-      const { error } = await supabase.from('pantry').update({ quantity }).eq('id', id);
+    mutationFn: async (item: { name_override: string; quantity: number; unit?: string; reorder_at?: number }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const { error } = await supabase.from('pantry_items').insert({ ...item, user_id: user.id });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pantry'] }),
   });
 }
 
-// ---- PREP TASKS ----
+export function useUpdatePantryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, quantity }: { id: string; quantity: number }) => {
+      const { error } = await supabase
+        .from('pantry_items')
+        .update({ quantity, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pantry'] }),
+  });
+}
 
-export function usePrepTasks(date?: string) {
-  const targetDate = date ?? new Date().toISOString().slice(0, 10);
+export function useDeletePantryItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('pantry_items').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pantry'] }),
+  });
+}
+
+// ---- PREP LISTS ----
+
+export function usePrepLists(date?: string) {
   return useQuery({
-    queryKey: ['prep', targetDate],
+    queryKey: ['prep-lists', date],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('prep_tasks')
-        .select('*')
-        .eq('scheduled_for', targetDate)
-        .order('sort_order');
+        .from('prep_lists')
+        .select('*, tasks:prep_tasks(*)')
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return data as PrepTask[];
+      return data as PrepList[];
     },
   });
 }
@@ -136,9 +170,6 @@ export function useTogglePrepTask() {
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: (_, { id }) => {
-      const date = new Date().toISOString().slice(0, 10);
-      qc.invalidateQueries({ queryKey: ['prep', date] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['prep-lists'] }),
   });
 }

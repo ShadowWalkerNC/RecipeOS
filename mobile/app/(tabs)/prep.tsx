@@ -1,71 +1,74 @@
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, SectionList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { usePrepTasks, useTogglePrepTask } from '../../lib/queries';
-import { ScreenShell } from '../../components/ScreenShell';
-import type { PrepTask } from '../../lib/types';
+import { usePrepLists, useTogglePrepTask } from '../../lib/queries';
+import { PrepTaskRow } from '../../components/PrepTaskRow';
 
 export default function PrepScreen() {
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: tasks = [], isLoading, error, refetch } = usePrepTasks(today);
-  const { mutate: toggle } = useTogglePrepTask();
+  const { data: lists, isLoading, error } = usePrepLists();
+  const toggleTask = useTogglePrepTask();
 
-  const done = tasks.filter((t) => t.is_done).length;
-  const progress = tasks.length > 0 ? done / tasks.length : 0;
+  if (isLoading) return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}><Text style={styles.title}>Prep List</Text></View>
+      <View style={styles.center}><ActivityIndicator color="#16a34a" /></View>
+    </SafeAreaView>
+  );
+
+  if (error) return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}><Text style={styles.title}>Prep List</Text></View>
+      <View style={styles.center}><Text style={styles.errorText}>Failed to load prep lists.</Text></View>
+    </SafeAreaView>
+  );
+
+  const sections = (lists ?? []).map((list) => ({
+    title: list.name,
+    data: (list.tasks ?? []).sort((a, b) => a.sort_order - b.sort_order),
+    doneCount: (list.tasks ?? []).filter((t) => t.is_done).length,
+    totalCount: (list.tasks ?? []).length,
+  }));
 
   return (
-    <ScreenShell isLoading={isLoading} error={error} onRetry={refetch}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
-        <View style={{ padding: 16, flex: 1 }}>
-          <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: '700', marginBottom: 4 }}>Prep List</Text>
-          <Text style={{ color: '#888888', fontSize: 13, marginBottom: 12 }}>{today} — {done}/{tasks.length} complete</Text>
-
-          {/* Progress bar */}
-          <View style={{ height: 4, backgroundColor: '#1a1a1a', borderRadius: 2, marginBottom: 16 }}>
-            <View style={{ height: 4, width: `${Math.round(progress * 100)}%`, backgroundColor: '#16a34a', borderRadius: 2 }} />
-          </View>
-
-          {tasks.length === 0 ? (
-            <View style={{ alignItems: 'center', marginTop: 60 }}>
-              <Text style={{ color: '#555555', fontSize: 15 }}>No prep tasks for today.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={tasks}
-              keyExtractor={(item: PrepTask) => item.id}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }: { item: PrepTask }) => (
-                <TouchableOpacity
-                  onPress={() => toggle({ id: item.id, is_done: !item.is_done })}
-                  style={{
-                    backgroundColor: item.is_done ? '#0d1f0d' : '#111111',
-                    borderRadius: 12, padding: 14, marginBottom: 8,
-                    flexDirection: 'row', alignItems: 'center', gap: 12,
-                    borderLeftWidth: 3, borderLeftColor: item.is_done ? '#16a34a' : '#333333',
-                  }}
-                >
-                  <View style={{
-                    width: 22, height: 22, borderRadius: 11, borderWidth: 2,
-                    borderColor: item.is_done ? '#16a34a' : '#555555',
-                    backgroundColor: item.is_done ? '#16a34a' : 'transparent',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {item.is_done && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✓</Text>}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: item.is_done ? '#555555' : '#ffffff', fontSize: 14, textDecorationLine: item.is_done ? 'line-through' : 'none' }}>
-                      {item.task}
-                    </Text>
-                    <View style={{ flexDirection: 'row', marginTop: 4, gap: 10 }}>
-                      {item.station && <Text style={{ color: '#444444', fontSize: 11 }}>{item.station}</Text>}
-                      {item.estimated_minutes && <Text style={{ color: '#444444', fontSize: 11 }}>{item.estimated_minutes}m</Text>}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-            />
-          )}
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}><Text style={styles.title}>Prep List</Text></View>
+      {sections.length === 0 ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyIcon}>\uD83D\uDCCB</Text>
+          <Text style={styles.emptyTitle}>No prep lists</Text>
+          <Text style={styles.emptyBody}>Prep lists will appear here once created.</Text>
         </View>
-      </SafeAreaView>
-    </ScreenShell>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={(task) => task.id}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{section.title}</Text>
+              <Text style={styles.sectionProgress}>{section.doneCount}/{section.totalCount}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <PrepTaskRow task={item} onToggle={(id, is_done) => toggleTask.mutate({ id, is_done })} />
+          )}
+          contentContainerStyle={styles.list}
+          stickySectionHeadersEnabled={false}
+        />
+      )}
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#0a0a0a' },
+  header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 12 },
+  title: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  list: { paddingHorizontal: 16, paddingBottom: 32 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  errorText: { color: '#ef4444' },
+  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  emptyBody: { color: '#888', fontSize: 13, textAlign: 'center' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, marginTop: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
+  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  sectionProgress: { color: '#16a34a', fontSize: 13, fontWeight: '600' },
+});
