@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "scheme": "recipeos",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -16,14 +17,42 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"
       },
-      "package": "com.shadowwalker.recipeos"
+      "package": "com.shadowwalker.recipeos",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "recipeos",
+              "host": "auth",
+              "pathPrefix": "/callback"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "ios": {
       "bundleIdentifier": "com.shadowwalker.recipeos",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["recipeos"]
+      }
     },
-    "plugins": ["expo-router", "expo-sqlite", "expo-camera", "expo-image-picker"],
-    "scheme": "recipeos",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-build-properties",
+        {
+          "ios": { "deploymentTarget": "15.1" },
+          "android": { "compileSdkVersion": 35, "targetSdkVersion": 35 }
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }
