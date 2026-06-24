@@ -1,4 +1,4 @@
-name: Deploy to Render
+name: Deploy
 
 on:
   push:
@@ -8,11 +8,17 @@ on:
       - 'web/**'
       - 'shared/**'
       - 'render.yaml'
+      - 'supabase/functions/**'
 
 jobs:
-  deploy:
-    name: Trigger Render Deploy
+  # ── Web → Render ──────────────────────────────────────────
+  web:
+    name: Deploy Web (Render)
     runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'web/') ||
+      contains(github.event.head_commit.modified, 'shared/') ||
+      contains(github.event.head_commit.modified, 'render.yaml')
 
     steps:
       - name: Checkout
@@ -43,5 +49,34 @@ jobs:
           curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
             -H "Content-Type: application/json" \
             --fail
-        # Set RENDER_DEPLOY_HOOK_URL in GitHub repo Settings → Secrets → Actions
-        # Get the URL from Render dashboard → your service → Settings → Deploy Hook
+
+  # ── Edge Functions → Supabase ─────────────────────────────
+  edge-functions:
+    name: Deploy Edge Functions (Supabase)
+    runs-on: ubuntu-latest
+    if: contains(toJson(github.event.head_commit.modified), 'supabase/functions/')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy ocr-recipe function
+        run: supabase functions deploy ocr-recipe --no-verify-jwt
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Set edge function secrets
+        run: |
+          supabase secrets set OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
