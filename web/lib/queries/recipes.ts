@@ -1,32 +1,45 @@
+import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Database } from '@/lib/supabase/database.types';
 
-type Recipe = Database['public']['Tables']['recipes']['Row'];
-
-export function useRecipes() {
+export function useRecipes(search?: string, categoryId?: string) {
   return useQuery({
-    queryKey: ['recipes'],
+    queryKey: ['recipes', search, categoryId],
     queryFn: async () => {
       const supabase = createClient();
-      const { data, error } = await supabase
+      let q = supabase
         .from('recipes')
-        .select('*, category:categories(*)')
-        .order('created_at', { ascending: false });
+        .select('*, category:categories(id, name, icon)')
+        .order('name');
+      if (search) q = q.ilike('name', `%${search}%`);
+      if (categoryId) q = q.eq('category_id', categoryId);
+      const { data, error } = await q;
       if (error) throw error;
-      return data as (Recipe & { category: Database['public']['Tables']['categories']['Row'] | null })[];
+      return data ?? [];
     },
   });
 }
 
-export function useDeleteRecipe() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
+export function useRecipe(id: string) {
+  return useQuery({
+    queryKey: ['recipe', id],
+    queryFn: async () => {
       const supabase = createClient();
-      const { error } = await supabase.from('recipes').delete().eq('id', id);
+      const { data, error } = await supabase
+        .from('recipes')
+        .select(`
+          *,
+          category:categories(id, name, icon),
+          steps:recipe_steps(* order by step_number asc),
+          ingredients:recipe_ingredients(
+            *, ingredient:ingredients(id, name, default_unit, grams_per_cup)
+            order by sort_order asc
+          )
+        `)
+        .eq('id', id)
+        .single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['recipes'] }),
+    enabled: !!id,
   });
 }
