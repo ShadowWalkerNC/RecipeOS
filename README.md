@@ -13,18 +13,10 @@ Every recipe is built on a **Ratio Blueprint** — a proportional formula that s
 ## ⚡ Quick Start
 
 ```bash
-# 1. Clone
 git clone https://github.com/ShadowWalkerNC/RecipeOS.git
 cd RecipeOS
-
-# 2. Install dependencies
 cd mobile && npm install
-
-# 3. Configure environment
 cp .env.example .env
-# Set SUPABASE_URL and SUPABASE_ANON_KEY
-
-# 4. Start the app
 npx expo start
 ```
 
@@ -80,12 +72,7 @@ See [`ARCHITECTURE.md`](ARCHITECTURE.md) for full stack decisions, data model, a
 
 ## 🔗 CulinaryOS Integration
 
-RecipeOS registers as an MCP extension to [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS). The MCP server exposes 10 tools that allow the CulinaryOS AI agent to:
-
-- Sync recipes as menu items
-- Bridge pantry inventory to the purchasing module
-- Push prep lists to labor/shift planning
-- Stream recipe steps to KDS displays
+RecipeOS registers as an MCP extension to [CulinaryOS](https://github.com/ShadowWalkerNC/CulinaryOS). The MCP server exposes 10 tools that allow the CulinaryOS AI agent to sync recipes as menu items, bridge pantry inventory, push prep lists to labor/shift planning, and stream recipe steps to KDS displays.
 
 Integration is planned for Phase 4 (2027). See [`PROJECT_PLAN.md`](PROJECT_PLAN.md).
 
@@ -103,9 +90,45 @@ Integration is planned for Phase 4 (2027). See [`PROJECT_PLAN.md`](PROJECT_PLAN.
 
 ## 🤖 AI Agent Directive
 
-> **Current phase:** Phase 1 — Core Data + Screens
-> **Current action:** Build Supabase schema + wire live data to mobile screens
-> **Stack:** TypeScript · React Native + Expo · Supabase · TanStack Query · Zustand · Commander.js · MCP
-> **Do NOT:** use Kotlin · use Room · skip RLS on any table · make unscoped Supabase queries
-> **Always:** write `user_id` RLS on every new table · keep AI calls isolated in `mobile/lib/ai.ts` · offline-first for all mobile writes
+> **Current phase:** Phase 1 — Core Data + Screens  
+> **Current action:** Build Supabase schema + wire live data to mobile screens  
+> **Stack:** TypeScript · React Native + Expo · Supabase · TanStack Query · Zustand · Commander.js · MCP  
+> **Do NOT:** use Kotlin · use Room · skip RLS on any table · make unscoped Supabase queries  
+> **Always:** write `user_id` RLS on every new table · keep AI calls isolated in `mobile/lib/ai.ts` · offline-first for all mobile writes  
 > **GitHub:** https://github.com/ShadowWalkerNC/RecipeOS
+
+---
+
+## 🚀 Agent Session Bootstrap
+
+This repo follows the **Universal Project Architect (UPA)** workflow. Start every AI session by loading the system files below and filling in the context block.
+
+**Full reference:** [BOOT.md](https://github.com/ShadowWalkerNC/.github/blob/main/BOOT.md)
+
+```
+Load and follow these files before responding:
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/AGENTS.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/SESSION_START.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/AGENT_DISPATCH.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/UPA_V1.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/UPA_LIGHT_MODE.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/UPA_ESCALATION_CHECKLIST.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/agents/AGENT_COHERENCE.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/agents/AGENT_SECURITY.md
+https://raw.githubusercontent.com/ShadowWalkerNC/.github/main/agents/AGENT_DOCS.md
+https://raw.githubusercontent.com/ShadowWalkerNC/RecipeOS/main/AGENTS.md
+https://raw.githubusercontent.com/ShadowWalkerNC/RecipeOS/main/ARCHITECTURE.md
+
+PROJECT:      RecipeOS
+PHASE:        [current phase]
+LAST COMMIT:  [SHA or description]
+MODE:         [full | quick | audit | hotfix | onboard]
+AGENT:        [Perplexity | Claude | Cursor | Copilot]
+OPEN:         [2-3 open items or "see TODO"]
+SCOPE:        [what you want this session]
+OUT OF SCOPE: [what you are not doing]
+```
+
+---
+
+*MIT License · © 2026 ShadowWalkerNC*
